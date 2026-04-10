@@ -1,0 +1,48 @@
+I. Basic Testing Information
+Testing Date: Wednesday of Week 6 (April 8th), 14:00-14:30
+Testing Duration: 30 minutes
+User Information (Role): Fresh graduate, bachelor’s degree in Computer Science, job-hunting direction is backend development, with 1 on-campus project experience and no internship experience. This is the first time using a dedicated job search app, and the goal is to find an internship or full-time position that can be started within 3 months.
+Testing Personnel: User Researcher (lead), 2 Developers (observing and recording)
+Testing Environment: Mobile terminal (iOS system), Job Search App V1.0 (prototype)
+Testing Purpose: Verify the usability of the app’s core functions (job search, resume upload, job application), collect pain points during user use, and provide a basis for prototype optimization.
+II. Preset Testing Tasks
+1. Open the job search app and complete registration/login (the user is preset to have registered and logs in directly);
+2. Search for jobs related to "Backend Development" and filter by "Fresh Graduate Eligible", "Internship", and "Full-time" options;
+3. View the details of 3 target jobs and favorite 1 intended job;
+4. Upload a personal resume (a pre-prepared PDF resume);
+5. Apply for 2 intended jobs with the resume;
+6. Check application records and modify personal job-hunting intentions (e.g., expected salary, work location).
+III. Real-time Testing Process Record
+14:00-14:02: The user logged into the app. After entering the account and password, the page did not respond for 3 seconds. The user tried to exit and log in again, and successfully logged in the second time (first login had loading lag).
+14:02-14:08: The user clicked the "Job Search" box on the homepage, entered "Backend Development", and 12 related jobs appeared after clicking search. The user looked for the "Fresh Graduate Eligible" filter, found it in the filter bar on the right side of the page, but no jobs were displayed after filtering (there were actually 3 jobs eligible for fresh graduates, indicating abnormal filtering logic). The user was confused, tried to cancel the filter, and re-filtered by "Internship", which showed 5 jobs, so the filtering function was partially normal.
+14:08-14:15: The user viewed the details of 3 internship jobs. Among them, one job detail page did not display "Job Responsibilities" and only showed "Job Requirements". The user complained, "I don’t know what the job entails, so I can’t judge if it’s suitable." The user clicked the "Favorite" button, which prompted "Favorite Successful", but when returning to the favorites folder to check, the job was not found (abnormal favorite function). The user clicked "Favorite" twice repeatedly, but it still did not appear, so they gave up favoriting.
+14:15-14:22: The user clicked the "My" page, found "Resume Management", and clicked "Upload Resume". They selected a local PDF resume from the mobile phone, and the system prompted "Upload Successful" after uploading. However, when clicking "View Resume", the page displayed "File Cannot Be Opened" (abnormal resume preview function). The user tried to upload again, but the problem persisted, showing signs of irritability and asking, "Is there a problem with my resume format?" (actually, the app’s preview function was not compatible with PDF format).
+14:22-14:28: The user returned to the job list, selected 2 internship jobs, and clicked "Apply with Resume". The system prompted "Please upload a valid resume" (contradicting the previous "Upload Successful" prompt). The user entered "Resume Management" again to confirm that the resume had been uploaded, but still could not apply, and finally gave up the application operation.
+14:28-14:30: The user tried to modify job-hunting intentions, found "Job-hunting Intentions" in the "Personal Center", modified the expected salary, and clicked "Save", but the page had no response and the modification could not be saved. At the end of the test, the user feedback: "Many functions of the app are unavailable, and the experience is not good."
+IV. Testing Findings (Including Unexpected Findings)
+1. Expected Findings (Basic Function Issues)
+- Incomplete job filtering function: The filtering logic for "Fresh Graduate Eligible" is abnormal, and no corresponding jobs are displayed after filtering (there are actually eligible jobs);
+- Resume cannot be previewed after upload: The PDF resume is uploaded successfully, but cannot be opened for viewing, which affects the user’s ability to confirm the resume upload effect;
+- Abnormal application function: After uploading the resume, the system still prompts "Please upload a valid resume", making it impossible to complete the application;
+- Modifications to job-hunting intentions cannot be saved: After modifying the expected salary and work location, clicking "Save" has no response, and personal information cannot be updated.
+2. Unexpected Findings (Beyond Preset, Real User Pain Points)
+- Login page loading lag: The first login takes 3 seconds to respond, and users will subconsciously exit and log in again, affecting the initial user experience (loading speed was not considered in the preset);
+- Missing job detail information: Some jobs do not display "Job Responsibilities", making it impossible for users to judge job matching and reducing job attractiveness (the preset only focused on job search and did not consider the completeness of information on the detail page);
+- Abnormal favorite function and misleading feedback: The user clicks "Favorite" and receives a "Successful" prompt, but the job is not found in the favorites folder, which is likely to cause user confusion and distrust (the preset did not test the continuity of the favorite function);
+- Users are unclear about the definition of a "valid resume": The system prompts "Please upload a valid resume" but does not explain the criteria for "validity" (e.g., format, size, content requirements). Users will suspect problems with their own resumes rather than the app.
+V. User Feedback (Verbatim Excerpts)
+- "The login was laggy. I thought the app crashed, so I logged in again and it worked."
+- "I wanted to find jobs eligible for fresh graduates, but there were none after filtering. When I canceled the filter, there were many that didn’t fit. It’s too troublesome."
+- "When looking at jobs, I don’t know what the job specifically involves—only the job requirements. I can’t judge if I can do it."
+- "The resume was uploaded successfully, but I can’t view it or apply with it. I don’t know what’s wrong; I’m a bit anxious."
+- "I favorited a job, but couldn’t find it later. It was a waste of time, and this function feels useless."
+VI. Planned Modifications (Based on Testing Findings)
+1. Optimize the loading speed of the login page to reduce loading delay (Responsible by Developers, to be fixed within 1 working day);
+2. Fix the job filtering logic to ensure that the "Fresh Graduate Eligible" filter can normally display corresponding jobs, and add explanations for filtering criteria (Responsible by Developers, to be fixed within 2 working days);
+3. Improve the job detail page, add the "Job Responsibilities" module, and ensure that all jobs display complete information (Cooperated by Product and Development, to be completed within 2 working days);
+4. Fix the favorite function to ensure that favorited jobs are normally displayed in the favorites folder, and optimize the favorite feedback prompt (Responsible by Developers, to be fixed within 1 working day);
+5. Fix the resume preview function to be compatible with PDF format, ensuring that it can be viewed normally after upload (Responsible by Developers, to be fixed within 2 working days);
+6. Fix the linkage issue between the application function and resume upload, ensure that applications can be completed normally after uploading a valid resume, and add explanations for the criteria of a "valid resume" (Cooperated by Development and Product, to be completed within 2 working days);
+7. Fix the function of saving modifications to job-hunting intentions, ensuring that modifications can be updated successfully (Responsible by Developers, to be fixed within 1 working day).
+VII. Testing Summary
+This test covered the core functions of the job search app and identified 8 issues in total, 4 of which were expected basic function abnormalities and 4 were unexpected user pain points. As a fresh graduate (one of the core target users), the user has high requirements for the app’s usability and functional continuity. The issues exposed in this test, such as loading lag, functional abnormalities, and information missing, will directly affect user retention and willingness to use. Subsequent modifications and optimizations will be carried out in accordance with the plan. The next week’s test will focus on verifying the functions fixed this time to ensure that the core processes can be used normally and further collect user feedback.
