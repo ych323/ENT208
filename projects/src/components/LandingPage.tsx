@@ -40,7 +40,7 @@ export function LandingPage() {
         <div className="nav-links">
           <a href="/forum" className="nav-link">论坛</a>
           <a href="/resources" className="nav-link">学习资源</a>
-          <a href="/en" className="nav-link en-link">EN</a>
+          <a href="/zh" className="nav-link en-link">EN</a>
         </div>
       </nav>
 

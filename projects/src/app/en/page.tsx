@@ -1,8 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 
-export default function EnglishLandingPage() {
+export default function EnglishHomePage() {
+  const [started, setStarted] = useState(false);
+
+  if (started) {
+    // Dynamic import to avoid SSR issues with Chat component
+    const ChatComponent = require('@/components/chat/Chat').Chat;
+    return <ChatComponent onBack={() => setStarted(false)} />;
+  }
+
   return (
     <>
       <style jsx global>{`
@@ -111,11 +120,28 @@ export default function EnglishLandingPage() {
           font-weight: 500;
           transition: all 0.3s ease;
           text-decoration: none;
+          cursor: pointer;
         }
         
         .nav-link:hover {
           color: var(--text-primary);
           background: var(--card-bg);
+        }
+        
+        .nav-link-lang {
+          padding: 8px 16px;
+          border-radius: 8px;
+          color: var(--accent);
+          font-size: 14px;
+          font-weight: 600;
+          border: 1px solid var(--accent);
+          transition: all 0.3s ease;
+          text-decoration: none;
+        }
+        
+        .nav-link-lang:hover {
+          background: var(--accent);
+          color: white;
         }
         
         .hero-content {
@@ -176,12 +202,12 @@ export default function EnglishLandingPage() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
+          border: none;
         }
         
         .btn-primary {
           background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
           color: white;
-          border: none;
         }
         
         .btn-primary:hover {
@@ -192,7 +218,7 @@ export default function EnglishLandingPage() {
         .btn-secondary {
           background: var(--card-bg);
           color: var(--text-primary);
-          border: 1px solid var(--card-border);
+          border: 1px solid var(--card-border) !important;
         }
         
         .btn-secondary:hover {
@@ -391,7 +417,7 @@ export default function EnglishLandingPage() {
         <div className="nav-links">
           <Link href="/en/forum" className="nav-link">Forum</Link>
           <Link href="/en/resources" className="nav-link">Resources</Link>
-          <Link href="/" className="nav-link">中文</Link>
+          <Link href="/zh" className="nav-link-lang">中文</Link>
         </div>
       </nav>
 
@@ -415,9 +441,9 @@ export default function EnglishLandingPage() {
           </p>
           
           <div className="hero-actions">
-            <Link href="/en/chat" className="btn btn-primary">
-              Start Now
-            </Link>
+            <button onClick={() => setStarted(true)} className="btn btn-primary">
+              Start Now →
+            </button>
             <Link href="/en/forum" className="btn btn-secondary">
               Join Forum
             </Link>
@@ -524,9 +550,9 @@ export default function EnglishLandingPage() {
           <p className="cta-desc">
             Start your career positioning journey today and discover opportunities within reach.
           </p>
-          <Link href="/en/chat" className="btn btn-primary">
-            Get Started Free
-          </Link>
+          <button onClick={() => setStarted(true)} className="btn btn-primary">
+            Get Started Free →
+          </button>
         </div>
       </section>
 

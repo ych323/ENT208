@@ -1,189 +1,198 @@
-# 够得着 / Reachable
+# Reachable / 够得着
 
-> AI求职能力定位器 — 帮助大学生看清能力位置、找到岗位方向、补上能力差距
+> AI Career Ability Locator - Help students discover their ability position, find job directions, and bridge skill gaps
 
-## 项目简介
+## Overview
 
-够得着是一个专为大学生设计的智能求职助手，通过AI对话式交互，帮助用户：
+Reachable is an intelligent career assistant designed for students and graduates, using AI conversational interaction to help users:
 
-- 生成六维能力画像（技术硬技能、项目经验、行业认知、沟通表达、实习经历、学习潜力）
-- 基于RAG技术匹配20+真实岗位数据
-- 获得个性化成长计划和提升路径
-- 支持简历上传或手动描述背景
-- **求职论坛** - 分享面试经历、交流求职心得
-- **学习资源库** - 精心整理的学习路线和优质资源
+- Generate 6-dimensional ability profiles (technical skills, project experience, industry knowledge, communication, internships, learning potential)
+- Match with 20+ real job positions based on RAG technology
+- Get personalized growth plans and improvement paths
+- Support resume upload or manual background description
+- **Career Forum** - Share interview experiences and career insights
+- **Learning Library** - Carefully curated learning paths and quality resources
 
-## 核心功能
+## Core Features
 
-| 功能 | 说明 |
-|------|------|
-| 对话式能力画像 | 通过自然对话采集背景，生成六维能力评估 |
-| RAG岗位匹配 | 基于20+真实岗位数据，推荐稳拿/冲刺/梦想三类岗位 |
-| 个性化成长计划 | 针对目标岗位生成可执行的技能学习路径 |
-| 求职论坛 | 面试经验分享、岗位讨论、学习打卡、求职互助 |
-| 学习资源库 | 前端/后端/算法/面试优质资源聚合 |
+| Feature | Description |
+|---------|-------------|
+| Conversational Ability Profile | Collect background through natural dialogue, generate 6-dimensional ability assessment |
+| RAG Job Matching | Based on 20+ real job data, recommend Safe/Stretch/Dream positions |
+| Personalized Growth Plan | Generate actionable skill learning paths for target positions |
+| Career Forum | Interview experience sharing, job discussions, study check-ins, job help |
+| Learning Library | Frontend/Backend/Algorithm/Interview quality resources |
 
-## 技术架构
+## Tech Stack
 
 ```
-前端：Next.js 16 + React 19 + TypeScript + shadcn/ui + Tailwind CSS 4
-后端：Next.js API Routes
-数据库：Supabase PostgreSQL
-AI引擎：智谱GLM-5（流式对话）
-RAG技术：向量数据库 + 语义搜索（coze-coding-dev-sdk）
+Frontend: Next.js 16 + React 19 + TypeScript + shadcn/ui + Tailwind CSS 4
+Backend: Next.js API Routes
+Database: Supabase PostgreSQL
+AI Engine: Zhipu GLM-5 (Streaming Conversation)
+RAG Technology: Vector Database + Semantic Search (coze-coding-dev-sdk)
 ```
 
-## 本地开发
+## Local Development
 
-### 环境要求
+### Requirements
 
 - Node.js 18+
 - pnpm 9+
 
-### 快速启动
+### Quick Start
 
 #### macOS / Linux
 
 ```bash
-# 安装依赖
+# Install dependencies
 pnpm install
 
-# 配置环境变量
+# Configure environment variables
 cp .env.local.example .env.local
-# 编辑 .env.local，填入你的智谱API Key
+# Edit .env.local, add your Zhipu API Key
 
-# 启动开发服务器
+# Start development server
 pnpm dev
 ```
 
 #### Windows
 
 ```powershell
-# 安装依赖
+# Install dependencies
 pnpm install
 
-# 配置环境变量
+# Configure environment variables
 copy .env.local.example .env.local
-# 编辑 .env.local，填入你的智谱API Key
+# Edit .env.local, add your Zhipu API Key
 
-# 启动开发服务器
+# Start development server
 pnpm dev:win
 ```
 
-### 环境变量配置
+### Environment Variables
 
-创建 `.env.local` 文件，必需配置：
+Create `.env.local` file with required configuration:
 
 ```bash
-# 智谱AI配置（必需）
-ZHIPU_API_KEY=你的智谱API密钥
+# Zhipu AI Configuration (Required)
+ZHIPU_API_KEY=your_zhipu_api_key
 ZHIPU_BASE_URL=https://www.aiping.cn/api/v1
 ZHIPU_MODEL=GLM-5
 ```
 
-获取智谱API Key：https://open.bigmodel.cn/
+Get Zhipu API Key: https://open.bigmodel.cn/
 
-### 访问地址
+### Access URLs
 
-| 页面 | 地址 |
-|------|------|
-| 首页 | http://localhost:5000 |
-| 论坛 | http://localhost:5000/forum |
-| 学习资源 | http://localhost:5000/resources |
+| Page | URL |
+|------|-----|
+| Home (English) | http://localhost:5000 |
+| Home (Chinese) | http://localhost:5000/zh |
+| Forum | http://localhost:5000/en/forum |
+| Learning Resources | http://localhost:5000/en/resources |
 
-## 项目结构
+## Project Structure
 
 ```
 src/
 ├── app/                          # Next.js App Router
-│   ├── page.tsx                  # 首页
-│   ├── layout.tsx                # 根布局
-│   ├── globals.css               # 全局样式
-│   ├── forum/                    # 论坛页面
-│   │   ├── page.tsx             # 论坛首页
-│   │   └── [id]/page.tsx       # 帖子详情
-│   ├── resources/                # 学习资源页面
-│   │   └── page.tsx            # 资源列表
-│   └── api/                      # API路由
-│       ├── chat/route.ts         # 对话API
-│       ├── resume/route.ts       # 简历上传
-│       ├── forum/                # 论坛API
-│       │   ├── posts/route.ts   # 帖子列表/创建
-│       │   ├── posts/[id]/route.ts # 帖子详情
-│       │   └── comments/route.ts  # 评论
-│       ├── jobs/                 # 岗位API
-│       │   ├── search/route.ts   # 岗位搜索
-│       │   └── import/route.ts   # 岗位导入
-│       └── resources/route.ts    # 学习资源API
-├── components/                   # React组件
-│   ├── ui/                       # shadcn/ui基础组件
-│   ├── LandingPage.tsx          # 首页落地页
-│   └── chat/                     # 聊天组件
-└── storage/                      # 数据库相关
-    └── database/                 # Supabase配置
+│   ├── page.tsx                  # Home (English)
+│   ├── zh/page.tsx               # Home (Chinese)
+│   ├── en/                       # English pages
+│   │   ├── page.tsx            # English home
+│   │   ├── forum/              # English forum
+│   │   │   ├── page.tsx       # Forum home
+│   │   │   └── [id]/page.tsx  # Post detail
+│   │   └── resources/           # English resources
+│   │       └── page.tsx
+│   ├── forum/                    # Chinese forum pages
+│   │   ├── page.tsx
+│   │   └── [id]/page.tsx
+│   ├── resources/                # Chinese resources pages
+│   │   └── page.tsx
+│   ├── layout.tsx                # Root layout
+│   ├── globals.css               # Global styles
+│   └── api/                      # API Routes
+│       ├── chat/route.ts         # Chat API
+│       ├── resume/route.ts       # Resume upload
+│       ├── forum/                # Forum API
+│       │   ├── posts/route.ts   # Post list/create
+│       │   ├── posts/[id]/route.ts # Post detail
+│       │   └── comments/route.ts  # Comments
+│       ├── jobs/                 # Job API
+│       │   ├── search/route.ts   # Job search
+│       │   └── import/route.ts   # Job import
+│       └── resources/route.ts    # Learning resources API
+├── components/                   # React Components
+│   ├── ui/                       # shadcn/ui base components
+│   ├── LandingPage.tsx          # Chinese Landing Page
+│   └── chat/                     # Chat components
+└── storage/                      # Database related
+    └── database/                 # Supabase config
 ```
 
-## API接口
+## API Endpoints
 
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/api/chat` | POST | AI对话（SSE流式输出） |
-| `/api/resume` | POST | 简历文件上传 |
-| `/api/jobs/search` | POST | 岗位语义搜索（RAG） |
-| `/api/forum/posts` | GET/POST | 获取/创建帖子 |
-| `/api/forum/posts/[id]` | GET | 获取帖子详情 |
-| `/api/forum/comments` | POST | 添加评论 |
-| `/api/resources` | GET/POST | 获取/添加学习资源 |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/chat` | POST | AI Chat (SSE Streaming) |
+| `/api/resume` | POST | Resume File Upload |
+| `/api/jobs/search` | POST | Job Semantic Search (RAG) |
+| `/api/forum/posts` | GET/POST | Get/Create Posts |
+| `/api/forum/posts/[id]` | GET | Get Post Detail |
+| `/api/forum/comments` | POST | Add Comment |
+| `/api/resources` | GET/POST | Get/Add Learning Resources |
 
-## 论坛板块
+## Forum Categories
 
-| 板块 | 内容 |
-|------|------|
-| 面试经验 | 面经分享、题目回忆、薪资待遇 |
-| 岗位讨论 | 岗位职责、发展前景、行业分析 |
-| 学习打卡 | 学习计划、每日打卡、互相监督 |
-| 求职互助 | 内推信息、简历修改、offer比较 |
+| Category | Content |
+|----------|---------|
+| Interview Experience | Interview sharing, questions, salary |
+| Job Discussion | Job responsibilities, prospects, industry analysis |
+| Study Check-in | Learning plans, daily check-ins, mutual supervision |
+| Job Help | referrals, resume reviews, offer comparisons |
 
-## 已收录岗位
+## Included Job Positions
 
-涵盖20+真实岗位，来自字节跳动、阿里巴巴、腾讯、美团、百度、小米、滴滴、网易、哔哩哔哩、快手、华为、蚂蚁集团、拼多多、商汤科技等公司。
+Covers 20+ real positions from companies including ByteDance, Alibaba, Tencent, Meituan, Baidu, Xiaomi, Didi, NetEase, Bilibili, Kuaishou, Huawei, Ant Group, Pinduoduo, SenseTime, etc.
 
-## 学习资源分类
+## Learning Resource Categories
 
-| 分类 | 内容 |
-|------|------|
-| 前端 | 学习路线、MDN文档、React、Vue、TypeScript |
-| 后端 | Java/Go、Spring Boot、数据库、Redis |
-| 算法 | 代码随想录、labuladong、LeetCode热题 |
-| 面试 | 程序员面试金典、牛客网面经 |
+| Category | Content |
+|----------|---------|
+| Frontend | Learning paths, MDN docs, React, Vue, TypeScript |
+| Backend | Java/Go, Spring Boot, Database, Redis |
+| Algorithm | Code Thoughts, labuladong, LeetCode hot problems |
+| Interview | Cracking the Coding Interview, Nowcoder experiences |
 
-## 技术亮点
+## Technical Highlights
 
-### 1. RAG检索增强
+### 1. RAG Retrieval Augmentation
 
-基于向量数据库的语义搜索，匹配真实岗位数据。
+Semantic search based on vector database, matching real job data.
 
-### 2. 流式对话
+### 2. Streaming Conversation
 
-使用SSE协议实现打字机式输出，提升用户体验。
+Typewriter-style output using SSE protocol for better user experience.
 
-### 3. 分步对话控制
+### 3. Step-by-step Conversation Control
 
-严格的对话节奏控制，每轮只做一件事。
+Strict conversation pacing, one thing at a time.
 
-### 4. 社区功能
+### 4. Community Features
 
-基于Supabase的后端存储，支持论坛帖子和评论。
+Backend storage based on Supabase, supporting forum posts and comments.
 
-## 构建与部署
+## Build & Deploy
 
-### 构建
+### Build
 
 ```bash
 pnpm build
 ```
 
-### 启动生产服务器
+### Start Production Server
 
 ```bash
 # macOS / Linux
@@ -193,28 +202,28 @@ pnpm start
 pnpm start:win
 ```
 
-## 开发规范
+## Development Guidelines
 
-### 包管理器
+### Package Manager
 
-**必须使用 pnpm**：
+**Must use pnpm**:
 
 ```bash
-# 正确
+# Correct
 pnpm add package-name
 
-# 错误
+# Wrong
 npm install package-name
 yarn add package-name
 ```
 
-## 参考文档
+## References
 
-- [Next.js 官方文档](https://nextjs.org/docs)
-- [shadcn/ui 组件文档](https://ui.shadcn.com)
-- [智谱AI开放平台](https://open.bigmodel.cn/)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [Supabase 文档](https://supabase.com/docs)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [shadcn/ui Components](https://ui.shadcn.com)
+- [Zhipu AI Open Platform](https://open.bigmodel.cn/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [Supabase Documentation](https://supabase.com/docs)
 
 ## License
 
