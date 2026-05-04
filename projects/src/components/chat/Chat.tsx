@@ -5,14 +5,56 @@ import Image from 'next/image';
 import { Message } from '@/types/chat';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Send, Loader2, FileText, RotateCcw } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 // 生成唯一ID
 function generateId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// 快捷引导问题
-const QUICK_QUESTIONS = [
+function normalizeAssistantContent(content: string): string {
+  return content
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`{1,3}/g, '')
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// 快捷引导问题 - 英文
+const QUICK_QUESTIONS_EN = [
+  {
+    icon: '📄',
+    title: 'Upload Resume Analysis',
+    desc: 'Supports PDF, Word, and image formats. AI automatically extracts and analyzes your background information',
+    prompt: 'upload_resume',
+    isUpload: true,
+  },
+  {
+    icon: '📝',
+    title: 'Describe Your Resume',
+    desc: 'Tell me about your experience and skills, and I will help you analyze them',
+    prompt: 'I want you to help me analyze my resume. Here is my situation:\n\n1. School and major:\n2. Skills I have:\n3. Projects I have done:\n4. Internship experience (if any):\n5. Fields of interest:\n\nPlease help me identify my abilities based on this information.',
+  },
+  {
+    icon: '😶‍🌫️',
+    title: 'Completely Lost',
+    desc: "Not sure what you can do? Don't worry, we can find a direction together",
+    prompt: "I'm a junior student and I have no idea what kind of job I can do. Can you help me analyze?",
+  },
+  {
+    icon: '🏢',
+    title: 'Want to Join a Big Company',
+    desc: "Want to aim for big tech but not confident? Let AI help you assess the gap and create a sprint plan",
+    prompt: "I want to join a big tech company but I feel like I'm not qualified enough. Do I have a chance with my current level?",
+  },
+];
+
+// 快捷引导问题 - 中文
+const QUICK_QUESTIONS_ZH = [
   {
     icon: '📄',
     title: '上传简历分析',
@@ -45,6 +87,7 @@ interface ChatProps {
 }
 
 export function Chat({ onBack }: ChatProps) {
+  const { isEnglish } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,6 +95,56 @@ export function Chat({ onBack }: ChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 根据语言选择快捷问题
+  const QUICK_QUESTIONS = isEnglish ? QUICK_QUESTIONS_EN : QUICK_QUESTIONS_ZH;
+
+  // 国际化文本
+  const texts = {
+    welcomeTitle: isEnglish ? 'How can I help you?' : '有什么我能帮你的吗？',
+    welcomeDesc: isEnglish 
+      ? "I'm your career positioning assistant, helping you understand your abilities and find your direction"
+      : '我是你的求职定位助手，帮你看清能力、找到方向',
+    userAvatar: isEnglish ? 'Me' : '我',
+    inputPlaceholder: isEnglish 
+      ? (isUploading ? 'Parsing resume...' : 'Tell me about your background, or just ask me...')
+      : (isUploading ? '正在解析简历...' : '聊聊你的背景，或者直接问我...'),
+    inputHint: isEnglish 
+      ? 'Press Enter to send · Shift + Enter for new line · Click 📎 to upload resume'
+      : '按 Enter 发送 · Shift + Enter 换行 · 点击 📎 上传简历',
+    uploadTitle: isEnglish ? 'Upload Resume' : '上传简历',
+    sendTitle: isEnglish ? 'Send' : '发送',
+    requestFailed: isEnglish ? 'Request failed' : '请求失败',
+    errorPrefix: isEnglish ? 'Sorry, an error occurred: ' : '抱歉，出错了：',
+    networkError: isEnglish ? 'Something went wrong with the network' : '网络出了点问题',
+    noResponseError: isEnglish 
+      ? 'Sorry, I encountered some issues. Please try again.'
+      : '抱歉，我遇到了一些问题，请再试一次。',
+    uploadErrorTitle: isEnglish ? 'Resume upload failed 😔' : '抱歉，简历上传失败了 😔',
+    uploadErrorReasons: isEnglish 
+      ? 'Possible reasons:\n- Unsupported file format (please upload PDF, Word, image, or text file)\n- File too large (max 10MB)\n- Network issue\n\nPlease try again, or you can tell me about your situation directly~'
+      : '可能的原因：\n- 文件格式不支持（请上传 PDF、Word、图片或文本文件）\n- 文件太大（最大 10MB）\n- 网络问题\n\n请重新尝试，或者直接告诉我你的情况也可以～',
+    uploadedResume: isEnglish ? '📄 Uploaded resume: ' : '📄 上传简历：',
+    resumeAnalysisPrompt: isEnglish 
+      ? `I uploaded my resume, please help me analyze it:
+
+Resume content:
+{{content}}
+
+Based on my resume, please help me:
+1. Analyze my core strengths and advantages
+2. Evaluate what types of positions suit me
+3. Provide job-seeking advice`
+      : `我上传了我的简历，请帮我分析一下：
+
+简历内容：
+{{content}}
+
+请基于我的简历，帮我：
+1. 分析我的核心能力和优势
+2. 评估我适合什么类型的岗位
+3. 给出求职建议`,
+  };
 
   // 是否已开始对话
   const hasStarted = messages.length > 0;
@@ -111,8 +204,8 @@ export function Chat({ onBack }: ChatProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '请求失败' }));
-        throw new Error(errorData.error || '请求失败');
+        const errorData = await response.json().catch(() => ({ error: texts.requestFailed }));
+        throw new Error(errorData.error || texts.requestFailed);
       }
 
       const reader = response.body?.getReader();
@@ -140,7 +233,7 @@ export function Chat({ onBack }: ChatProps) {
                 fullContent += parsed.content;
                 setMessages((prev) =>
                   prev.map((m) =>
-                    m.id === assistantMessage.id ? { ...m, content: fullContent } : m
+                    m.id === assistantMessage.id ? { ...m, content: normalizeAssistantContent(fullContent) } : m
                   )
                 );
               }
@@ -152,16 +245,16 @@ export function Chat({ onBack }: ChatProps) {
       if (!fullContent) {
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMessage.id ? { ...m, content: '抱歉，我遇到了一些问题，请再试一次。' } : m
+            m.id === assistantMessage.id ? { ...m, content: texts.noResponseError } : m
           )
         );
       }
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMsg = error instanceof Error ? error.message : '网络出了点问题';
+      const errorMsg = error instanceof Error ? error.message : texts.networkError;
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantMessage.id ? { ...m, content: `抱歉，出错了：${errorMsg}` } : m
+          m.id === assistantMessage.id ? { ...m, content: `${texts.errorPrefix}${errorMsg}` } : m
         )
       );
     } finally {
@@ -176,7 +269,7 @@ export function Chat({ onBack }: ChatProps) {
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
-      content: `📄 上传简历：${file.name}`,
+      content: `${texts.uploadedResume}${file.name}`,
       timestamp: new Date(),
     };
 
@@ -195,18 +288,10 @@ export function Chat({ onBack }: ChatProps) {
 
       if (!response.ok || !data.success) {
         console.error('上传失败详情:', data);
-        throw new Error(data.message || data.error || '上传失败');
+        throw new Error(data.message || data.error || (isEnglish ? 'Upload failed' : '上传失败'));
       }
 
-      const analysisPrompt = `我上传了我的简历，请帮我分析一下：
-
-简历内容：
-${data.content}
-
-请基于我的简历，帮我：
-1. 分析我的核心能力和优势
-2. 评估我适合什么类型的岗位
-3. 给出求职建议`;
+      const analysisPrompt = texts.resumeAnalysisPrompt.replace('{{content}}', data.content);
 
       await sendMessage(analysisPrompt);
     } catch (error) {
@@ -214,7 +299,7 @@ ${data.content}
       const errorMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: `抱歉，简历上传失败了 😔\n\n可能的原因：\n- 文件格式不支持（请上传 PDF、Word、图片或文本文件）\n- 文件太大（最大 10MB）\n- 网络问题\n\n请重新尝试，或者直接告诉我你的情况也可以～`,
+        content: texts.uploadErrorReasons,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -279,35 +364,6 @@ ${data.content}
 
       {/* App Layout */}
       <div className="app-layout">
-        {/* Top Nav */}
-        <nav className="top-nav">
-          <div className="nav-left">
-            {onBack && (
-              <button onClick={onBack} className="back-btn" title="返回首页">
-                ←
-              </button>
-            )}
-            <Image
-              src="/logo.png"
-              alt="够得着"
-              width={34}
-              height={34}
-              className="nav-logo"
-            />
-            <div className="nav-info">
-              <div className="nav-title">够得着</div>
-              <div className="nav-sub">AI求职能力定位器</div>
-            </div>
-          </div>
-          {hasStarted && (
-            <div className="nav-right">
-              <button onClick={handleRestart} className="nav-icon-btn" title="新对话">
-                <RotateCcw className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-        </nav>
-
         {/* Chat Area */}
         <div className="chat-area">
           <div className="chat-content">
@@ -322,8 +378,8 @@ ${data.content}
                     height={64}
                     className="welcome-icon"
                   />
-                  <h2>有什么我能帮你的吗？</h2>
-                  <p>我是你的求职定位助手，帮你看清能力、找到方向</p>
+                  <h2>{texts.welcomeTitle}</h2>
+                  <p>{texts.welcomeDesc}</p>
                 </div>
 
                 {/* Quick Actions */}
@@ -363,7 +419,7 @@ ${data.content}
                         className="msg-avatar"
                       />
                     ) : (
-                      <div className="msg-avatar user-avatar">我</div>
+                      <div className="msg-avatar user-avatar">{texts.userAvatar}</div>
                     )}
                     <div className="msg-bubble">
                       <div className="whitespace-pre-wrap break-words">
@@ -405,7 +461,7 @@ ${data.content}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading || isUploading}
                   className="upload-btn"
-                  title="上传简历"
+                  title={texts.uploadTitle}
                 >
                   <FileText className="h-4 w-4" />
                 </button>
@@ -414,7 +470,7 @@ ${data.content}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={isUploading ? '正在解析简历...' : '聊聊你的背景，或者直接问我...'}
+                  placeholder={texts.inputPlaceholder}
                   disabled={isLoading || isUploading}
                   className="input-field"
                   rows={1}
@@ -424,13 +480,13 @@ ${data.content}
                 onClick={handleSubmit}
                 disabled={!input.trim() || isLoading || isUploading}
                 className="send-btn"
-                title="发送"
+                title={texts.sendTitle}
               >
                 <Send className="h-5 w-5" />
               </button>
             </div>
             <div className="input-hint">
-              按 Enter 发送 · Shift + Enter 换行 · 点击 📎 上传简历
+              {texts.inputHint}
             </div>
           </div>
         </div>
@@ -455,7 +511,8 @@ ${data.content}
           font-family: 'Noto Sans SC', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
           background: var(--dark);
           color: var(--text-primary);
-          height: 100vh;
+          height: calc(100vh - 72px);
+          min-height: calc(100vh - 72px);
           overflow: hidden;
           -webkit-font-smoothing: antialiased;
         }
@@ -528,7 +585,7 @@ ${data.content}
           z-index: 1;
           display: flex;
           flex-direction: column;
-          height: 100vh;
+          height: 100%;
         }
 
         /* ═══════ TOP NAV ═══════ */

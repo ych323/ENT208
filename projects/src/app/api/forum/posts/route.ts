@@ -1,96 +1,97 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { forumSeedPosts } from '@/lib/forum-seed';
+import { createWorkspacePost, listWorkspacePosts } from '@/lib/workspace-db';
 
-// 获取帖子列表
-export async function GET(request: NextRequest) {
-  const client = getSupabaseClient();
-  const { searchParams } = new URL(request.url);
-  
-  const category = searchParams.get('category');
-  const sort = searchParams.get('sort') || 'latest'; // latest/hot/top
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '10');
-  const offset = (page - 1) * pageSize;
-  
-  try {
-    let query = client.from('forum_posts').select('*', { count: 'exact' });
-    
-    // 分类筛选
-    if (category && category !== '全部') {
-      query = query.eq('category', category);
-    }
-    
-    // 排序
-    if (sort === 'hot') {
-      query = query.order('views', { ascending: false });
-    } else if (sort === 'top') {
-      query = query.order('likes', { ascending: false });
-    } else {
-      query = query.order('created_at', { ascending: false });
-    }
-    
-    // 分页
-    query = query.range(offset, offset + pageSize - 1);
-    
-    const { data, error, count } = await query;
-    if (error) throw new Error(`查询失败: ${error.message}`);
-    
-    return NextResponse.json({
-      success: true,
-      data: data || [],
-      total: count || 0,
-      page,
-      pageSize,
-    });
-  } catch (error) {
-    console.error('获取帖子列表失败:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : '获取失败' },
-      { status: 500 }
-    );
-  }
+const categoryMap = {
+  interview: 'Interview Experience',
+  jobs: 'Job Discussion',
+  study: 'Study Check-in',
+  help: 'Job Help',
+} as const;
+
+function normalizeLocale(value?: string | null) {
+  return value === 'zh' || value === 'cn' ? 'zh' : 'en';
 }
 
-// 创建帖子
+function normalizeCategory(value?: string | null) {
+  if (!value) return '';
+  const lowered = value.toLowerCase();
+  if (lowered === 'all' || lowered === '全部') return '';
+  if (lowered in categoryMap) return categoryMap[lowered as keyof typeof categoryMap];
+  if (value === 'Interview Experience' || value === 'Job Discussion' || value === 'Study Check-in' || value === 'Job Help') {
+    return value;
+  }
+  return value;
+}
+
+function getOwnerKey(request: NextRequest) {
+  return request.headers.get('x-user-key') || request.headers.get('x-client-id') || 'anonymous';
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const locale = normalizeLocale(searchParams.get('lang'));
+  const category = normalizeCategory(searchParams.get('category'));
+  const sort = searchParams.get('sort') || 'latest';
+  const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+  const pageSize = Math.max(parseInt(searchParams.get('pageSize') || '10', 10), 1);
+
+  const dbPosts = await listWorkspacePosts(locale);
+  let posts = [...forumSeedPosts.filter((post) => post.locale === locale), ...dbPosts];
+
+  if (category) {
+    posts = posts.filter((post) => post.category === category);
+  }
+
+  if (sort === 'hot') {
+    posts.sort((a, b) => b.views - a.views);
+  } else if (sort === 'top') {
+    posts.sort((a, b) => b.likes - a.likes);
+  } else {
+    posts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  const total = posts.length;
+  const offset = (page - 1) * pageSize;
+  const data = posts.slice(offset, offset + pageSize);
+
+  return NextResponse.json({
+    success: true,
+    data,
+    total,
+    page,
+    pageSize,
+  });
+}
+
 export async function POST(request: NextRequest) {
-  const client = getSupabaseClient();
-  
   try {
     const body = await request.json();
-    const { title, content, category, tags, target_job, company, author } = body;
-    
+    const locale = normalizeLocale(body.locale);
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    const content = typeof body.content === 'string' ? body.content.trim() : '';
+
     if (!title || !content) {
-      return NextResponse.json(
-        { success: false, error: '标题和内容不能为空' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Title and content are required.' }, { status: 400 });
     }
-    
-    const { data, error } = await client
-      .from('forum_posts')
-      .insert({
-        title,
-        content,
-        category: category || '面试经验',
-        tags: tags || '',
-        target_job: target_job || '',
-        company: company || '',
-        author: author || '匿名用户',
-        views: 0,
-        likes: 0,
-        comments_count: 0,
-      })
-      .select()
-      .single();
-    
-    if (error) throw new Error(`创建失败: ${error.message}`);
-    
-    return NextResponse.json({ success: true, data });
+
+    const post = await createWorkspacePost({
+      locale,
+      owner_key: getOwnerKey(request),
+      author: typeof body.author === 'string' && body.author.trim() ? body.author.trim() : 'Guest User',
+      title,
+      content,
+      category: normalizeCategory(body.category) || 'Job Discussion',
+      tags: typeof body.tags === 'string' ? body.tags.trim() : '',
+      target_job: typeof body.target_job === 'string' ? body.target_job.trim() : '',
+      company: typeof body.company === 'string' ? body.company.trim() : '',
+    });
+
+    return NextResponse.json({ success: true, data: post });
   } catch (error) {
-    console.error('创建帖子失败:', error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : '创建失败' },
-      { status: 500 }
+      { success: false, error: error instanceof Error ? error.message : 'Failed to create post.' },
+      { status: 500 },
     );
   }
 }

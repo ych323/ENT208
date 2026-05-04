@@ -79,3 +79,90 @@ AI求职能力定位器，通过对话式交互帮助大学生完成能力画像
 | 问题 | 状态 | 解决方案 |
 |------|------|----------|
 | PDF简历解析 | 本地环境兼容性问题 | 建议用户手动描述简历内容 |
+
+## Coze 平台配置
+
+### .coze 文件结构
+
+项目位于子目录 `projects/`，采用双 .coze 体系：
+
+- **根 `.coze`**：`/workspace/projects/.coze`
+- **子项目 `.coze`**：`/workspace/projects/projects/.coze`
+
+### 关键配置
+
+```toml
+[project]
+requires = ["nodejs-24"]
+project_type = "web"
+
+[preview]
+preview_enable = "enabled"
+
+[deploy.profile]
+kind = "service"
+flavor = "web"
+```
+
+### 脚本入口（相对于子项目目录）
+
+| 命令 | 脚本 | 说明 |
+|------|------|------|
+| dev.prepare | `scripts/prepare.sh` | 安装依赖 |
+| dev.run | `scripts/dev.sh` | 启动开发服务器（端口 5000，绑定 0.0.0.0） |
+| deploy.build | `scripts/build.sh` | Next.js 构建 + tsup 打包 |
+| deploy.run | `scripts/start.sh` | 启动生产服务（端口 5000） |
+
+### 运行时要求
+
+- Node.js 24（nodejs-24）
+- pnpm 9+
+- 端口：5000
+- 预览服务绑定：0.0.0.0（IPv4 全接口）
+
+## 岗位模块 (Jobs)
+
+### 功能概述
+
+展示字节跳动、腾讯、阿里巴巴三家公司的真实招聘信息，支持中英文切换。
+
+### 页面路由
+
+| 路由 | 语言 | 说明 |
+|------|------|------|
+| `/zh/jobs` | 中文 | 岗位列表页 |
+| `/zh/jobs/[id]` | 中文 | 岗位详情页 |
+| `/en/jobs` | 英文 | 岗位列表页 |
+| `/en/jobs/[id]` | 英文 | 岗位详情页 |
+
+### API 路由
+
+| 路径 | 方法 | 功能 |
+|------|------|------|
+| `/api/jobs/list` | GET/POST | 岗位列表（支持筛选、搜索、分页） |
+| `/api/jobs/[id]` | GET | 岗位详情（含相关岗位推荐） |
+
+### 数据存储
+
+- 本地开发使用内存 mock 数据（21条岗位数据）
+- 生产环境使用 Supabase 数据库（`jobs` 表）
+
+### 公司 Emoji
+
+| 公司 | Emoji |
+|------|-------|
+| ByteDance (字节跳动) | 🎵 |
+| Tencent (腾讯) | 💬 |
+| Alibaba (阿里巴巴) | 🛒 |
+
+### 英文翻译
+
+英文版页面使用客户端翻译函数将中文数据实时翻译为英文：
+
+- `translateTitle()` - 职位标题翻译
+- `translateLocation()` - 地点翻译
+- `translateText()` - 描述/要求/标签翻译
+- `getEducationLabel()` - 学历翻译
+- `getExperienceLabel()` - 经验翻译
+- `getCategoryLabel()` - 类别翻译
+- `getJobTypeLabel()` - 工作类型翻译

@@ -1,55 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { createWorkspaceComment } from '@/lib/workspace-db';
 
-// 添加评论
+function normalizeLocale(value?: string | null) {
+  return value === 'zh' || value === 'cn' ? 'zh' : 'en';
+}
+
+function getOwnerKey(request: NextRequest) {
+  return request.headers.get('x-user-key') || request.headers.get('x-client-id') || 'anonymous';
+}
+
 export async function POST(request: NextRequest) {
-  const client = getSupabaseClient();
-  
   try {
     const body = await request.json();
-    const { post_id, content, author } = body;
-    
-    if (!post_id || !content) {
-      return NextResponse.json(
-        { success: false, error: '帖子ID和内容不能为空' },
-        { status: 400 }
-      );
+    const postId = typeof body.post_id === 'string' ? body.post_id : '';
+    const content = typeof body.content === 'string' ? body.content.trim() : '';
+
+    if (!postId || !content) {
+      return NextResponse.json({ success: false, error: 'Post id and content are required.' }, { status: 400 });
     }
-    
-    // 插入评论
-    const { data: comment, error: commentError } = await client
-      .from('forum_comments')
-      .insert({
-        post_id,
-        content,
-        author: author || '匿名用户',
-        likes: 0,
-      })
-      .select()
-      .single();
-    
-    if (commentError) throw new Error(`评论失败: ${commentError.message}`);
-    
-    // 更新帖子评论数
-    const { data: post } = await client
-      .from('forum_posts')
-      .select('comments_count')
-      .eq('id', post_id)
-      .single();
-    
-    if (post) {
-      await client
-        .from('forum_posts')
-        .update({ comments_count: (post.comments_count || 0) + 1 })
-        .eq('id', post_id);
-    }
-    
+
+    const comment = await createWorkspaceComment({
+      post_id: postId,
+      locale: normalizeLocale(body.locale),
+      owner_key: getOwnerKey(request),
+      author: typeof body.author === 'string' && body.author.trim() ? body.author.trim() : 'Guest User',
+      content,
+    });
+
     return NextResponse.json({ success: true, data: comment });
   } catch (error) {
-    console.error('评论失败:', error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : '评论失败' },
-      { status: 500 }
+      { success: false, error: error instanceof Error ? error.message : 'Failed to create comment.' },
+      { status: 500 },
     );
   }
 }

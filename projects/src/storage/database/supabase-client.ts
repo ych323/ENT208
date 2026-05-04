@@ -8,6 +8,11 @@ interface SupabaseCredentials {
   anonKey: string;
 }
 
+function isSupabaseConfigured(): boolean {
+  loadEnv();
+  return Boolean(process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY);
+}
+
 function loadEnv(): void {
   if (envLoaded || (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY)) {
     return;
@@ -125,4 +130,4 @@ function getSupabaseClient(token?: string): SupabaseClient {
   });
 }
 
-export { loadEnv, getSupabaseCredentials, getSupabaseServiceRoleKey, getSupabaseClient };
+export { isSupabaseConfigured, loadEnv, getSupabaseCredentials, getSupabaseServiceRoleKey, getSupabaseClient };

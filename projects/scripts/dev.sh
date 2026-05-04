@@ -1,13 +1,13 @@
 #!/bin/bash
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_DIR"
 
 PORT=5000
-COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
+HOSTNAME=0.0.0.0
 DEPLOY_RUN_PORT=5000
-
-
-cd "${COZE_WORKSPACE_PATH}"
 
 kill_port_if_listening() {
     local pids
@@ -31,4 +31,4 @@ echo "Clearing port ${PORT} before start."
 kill_port_if_listening
 echo "Starting HTTP service on port ${PORT} for dev..."
 
-PORT=$PORT npx tsx watch src/server.ts
+PORT=$PORT HOSTNAME=$HOSTNAME pnpm tsx watch src/server.ts

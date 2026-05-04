@@ -2,17 +2,91 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Chat } from '@/components/chat/Chat';
+import { useAuth } from '@/context/AuthContext';
+import Header from '@/components/Header';
 
 export function LandingPage() {
   const [started, setStarted] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+
+  // 用户头像/登录按钮组件
+  function UserButton() {
+    if (isAuthenticated && user) {
+      return (
+        <Link href="/profile" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 12px 6px 6px',
+          borderRadius: '24px',
+          background: 'rgba(13,155,122,0.15)',
+          border: '1px solid rgba(13,155,122,0.3)',
+          textDecoration: 'none',
+          transition: 'all 0.3s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(13,155,122,0.25)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(13,155,122,0.15)';
+        }}
+        >
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            background: user.avatar || '#0D9B7A',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            fontWeight: '700',
+            color: 'white',
+          }}>
+            {user.username.charAt(0).toUpperCase()}
+          </div>
+          <span style={{ fontSize: '13px', color: '#4ECCA3', fontWeight: '500' }}>
+            {user.username}
+          </span>
+        </Link>
+      );
+    }
+    return (
+      <Link href="/login" style={{
+        padding: '8px 16px',
+        borderRadius: '8px',
+        background: 'linear-gradient(135deg, #0A6E5C, #0D9B7A)',
+        color: 'white',
+        fontSize: '13px',
+        fontWeight: '600',
+        textDecoration: 'none',
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-1px)';
+        e.currentTarget.style.boxShadow = '0 4px 16px rgba(13,155,122,0.4)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+      >
+        登录
+      </Link>
+    );
+  }
 
   if (started) {
     return <Chat onBack={() => setStarted(false)} />;
   }
 
   return (
-    <div className="landing-page">
+    <>
+      <Header />
+      
+      <div className="landing-page">
       {/* Ambient Background */}
       <div className="bg-ambient">
         <div className="orb orb-1"></div>
@@ -20,29 +94,6 @@ export function LandingPage() {
         <div className="orb orb-3"></div>
       </div>
       <div className="grid-overlay"></div>
-
-      {/* Navigation */}
-      <nav>
-        <div className="nav-brand">
-          <Image
-            src="/logo.png"
-            alt="够得着"
-            width={36}
-            height={36}
-            className="nav-logo"
-          />
-          <div>
-            <div className="nav-title">够得着</div>
-            <div className="nav-subtitle">AI求职能力定位器</div>
-          </div>
-        </div>
-
-        <div className="nav-links">
-          <a href="/forum" className="nav-link">论坛</a>
-          <a href="/resources" className="nav-link">学习资源</a>
-          <a href="/zh" className="nav-link en-link">EN</a>
-        </div>
-      </nav>
 
       {/* Hero Section */}
       <section className="hero">
@@ -190,7 +241,7 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer>
-        <p><span className="footer-brand">够得着</span> · 让每个努力都有方向 🚀</p>
+        <p><span className="footer-brand">够得着 / Reachable</span> · 让每个努力都有方向 🚀</p>
       </footer>
 
       <style jsx global>{`
@@ -280,107 +331,6 @@ export function LandingPage() {
           background-size: 80px 80px;
           mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 80%);
         }
-
-        /* ═══════════ NAV ═══════════ */
-        nav {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 100;
-          padding: 20px 48px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          backdrop-filter: blur(20px);
-          background: rgba(11,18,21,0.6);
-          border-bottom: 1px solid rgba(255,255,255,0.04);
-          animation: fade-down 0.8s ease-out;
-        }
-        @keyframes fade-down {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .nav-brand {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .nav-links {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-left: auto;
-        }
-        .nav-link {
-          padding: 8px 16px;
-          border-radius: 8px;
-          color: var(--text-secondary);
-          font-size: 14px;
-          font-weight: 500;
-          transition: all 0.3s ease;
-        }
-        .nav-link:hover {
-          color: var(--text-primary);
-          background: var(--card-bg);
-        }
-        .en-link {
-          padding: 8px 16px;
-          border-radius: 8px;
-          color: var(--accent) !important;
-          font-size: 14px;
-          font-weight: 600;
-          border: 1px solid var(--accent);
-          transition: all 0.3s ease;
-        }
-        .en-link:hover {
-          background: var(--accent);
-          color: var(--dark) !important;
-        }
-        .nav-logo {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          box-shadow: 0 0 20px rgba(13,155,122,0.3);
-        }
-        .nav-title {
-          font-weight: 700;
-          font-size: 16px;
-          letter-spacing: -0.02em;
-        }
-        .nav-subtitle {
-          font-size: 11px;
-          color: var(--text-dim);
-          margin-top: 1px;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-        }
-        .nav-links {
-          display: flex;
-          gap: 32px;
-          list-style: none;
-        }
-        .nav-links a {
-          color: var(--text-secondary);
-          text-decoration: none;
-          font-size: 14px;
-          font-weight: 400;
-          transition: color 0.3s;
-          position: relative;
-        }
-        .nav-links a::after {
-          content: '';
-          position: absolute;
-          bottom: -4px;
-          left: 0;
-          width: 0;
-          height: 1.5px;
-          background: var(--primary-light);
-          transition: width 0.3s;
-        }
-        .nav-links a:hover { color: var(--text-primary); }
-        .nav-links a:hover::after { width: 100%; }
 
         /* ═══════════ HERO ═══════════ */
         .hero {
@@ -841,8 +791,6 @@ export function LandingPage() {
 
         /* ═══════════ RESPONSIVE ═══════════ */
         @media (max-width: 768px) {
-          nav { padding: 16px 24px; }
-          .nav-links { display: none; }
           .hero { padding: 100px 20px 60px; }
           .features { padding: 80px 20px; }
           .feature-grid { grid-template-columns: 1fr; gap: 16px; }
@@ -854,5 +802,6 @@ export function LandingPage() {
         }
       `}</style>
     </div>
+    </>
   );
 }
