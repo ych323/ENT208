@@ -117,7 +117,7 @@ type WorkspaceDb = {
   resume_workspaces: ResumeWorkspaceRecord[];
 };
 
-const DATA_DIR = path.join(process.cwd(), '.local-data');
+const DATA_DIR = process.env.REACHABLE_DATA_DIR || path.join(process.cwd(), '.local-data');
 const DB_PATH = path.join(DATA_DIR, 'workspace-db.json');
 
 function createEmptyDb(): WorkspaceDb {

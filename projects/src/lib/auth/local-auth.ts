@@ -23,7 +23,7 @@ type LocalAuthStore = {
   sessions: LocalAuthSession[];
 };
 
-const DATA_DIR = path.join(process.cwd(), '.local-data');
+const DATA_DIR = process.env.REACHABLE_DATA_DIR || path.join(process.cwd(), '.local-data');
 const STORE_PATH = path.join(DATA_DIR, 'auth-store.json');
 const PASSWORD_SALT = 'reachable-local-auth';
 const AVATAR_PALETTE = ['#1e7f64', '#f08c38', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6'];
