@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { getSupabaseClient, isSupabaseConfigured } from '@/storage/database/supabase-client';
 
 export type ForumPostRecord = {
   id: string;
@@ -245,7 +246,66 @@ async function saveDb(db: WorkspaceDb) {
   await writeFile(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
 }
 
+async function trySupabase<T>(operation: () => Promise<T>) {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    return await operation();
+  } catch (error) {
+    console.warn('Supabase workspace storage failed, falling back to local storage:', error);
+    return null;
+  }
+}
+
+function sb() {
+  return getSupabaseClient();
+}
+
+function normalizePost(record: Partial<ForumPostRecord>): ForumPostRecord {
+  return {
+    id: typeof record.id === 'string' ? record.id : `db-post-${randomUUID()}`,
+    locale: record.locale === 'zh' ? 'zh' : 'en',
+    author: typeof record.author === 'string' ? record.author : 'Guest User',
+    owner_key: typeof record.owner_key === 'string' ? record.owner_key : '',
+    title: typeof record.title === 'string' ? record.title : '',
+    content: typeof record.content === 'string' ? record.content : '',
+    category: typeof record.category === 'string' ? record.category : 'Job Discussion',
+    tags: typeof record.tags === 'string' ? record.tags : '',
+    target_job: typeof record.target_job === 'string' ? record.target_job : '',
+    company: typeof record.company === 'string' ? record.company : '',
+    views: typeof record.views === 'number' ? record.views : 0,
+    likes: typeof record.likes === 'number' ? record.likes : 0,
+    comments_count: typeof record.comments_count === 'number' ? record.comments_count : 0,
+    created_at: typeof record.created_at === 'string' ? record.created_at : new Date().toISOString(),
+  };
+}
+
+function normalizeComment(record: Partial<ForumCommentRecord>): ForumCommentRecord {
+  return {
+    id: typeof record.id === 'string' ? record.id : `db-comment-${randomUUID()}`,
+    post_id: typeof record.post_id === 'string' ? record.post_id : '',
+    locale: record.locale === 'zh' ? 'zh' : 'en',
+    author: typeof record.author === 'string' ? record.author : 'Guest User',
+    owner_key: typeof record.owner_key === 'string' ? record.owner_key : '',
+    content: typeof record.content === 'string' ? record.content : '',
+    likes: typeof record.likes === 'number' ? record.likes : 0,
+    created_at: typeof record.created_at === 'string' ? record.created_at : new Date().toISOString(),
+  };
+}
+
 export async function listWorkspacePosts(locale: 'en' | 'zh') {
+  const remote = await trySupabase(async () => {
+    const { data, error } = await sb()
+      .from('reachable_forum_posts')
+      .select('*')
+      .eq('locale', locale)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []).map((item) => normalizePost(item));
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   return db.forum_posts.filter((post) => post.locale === locale);
 }
@@ -253,6 +313,23 @@ export async function listWorkspacePosts(locale: 'en' | 'zh') {
 export async function createWorkspacePost(
   input: Omit<ForumPostRecord, 'id' | 'views' | 'likes' | 'comments_count' | 'created_at'>,
 ) {
+  const remote = await trySupabase(async () => {
+    const { data, error } = await sb()
+      .from('reachable_forum_posts')
+      .insert({
+        ...input,
+        views: 0,
+        likes: 0,
+        comments_count: 0,
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return normalizePost(data);
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   const post: ForumPostRecord = {
     id: `db-post-${randomUUID()}`,
@@ -269,6 +346,28 @@ export async function createWorkspacePost(
 }
 
 export async function getWorkspacePost(postId: string) {
+  const remote = await trySupabase(async () => {
+    const { data: postData, error: postError } = await sb()
+      .from('reachable_forum_posts')
+      .select('*')
+      .eq('id', postId)
+      .maybeSingle();
+    if (postError) throw postError;
+
+    const { data: commentData, error: commentError } = await sb()
+      .from('reachable_forum_comments')
+      .select('*')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    if (commentError) throw commentError;
+
+    return {
+      post: postData ? normalizePost(postData) : null,
+      comments: (commentData ?? []).map((item) => normalizeComment(item)),
+    };
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   const post = db.forum_posts.find((item) => item.id === postId) || null;
   const comments = db.forum_comments
@@ -278,6 +377,24 @@ export async function getWorkspacePost(postId: string) {
 }
 
 export async function incrementWorkspacePostViews(postId: string) {
+  const remote = await trySupabase(async () => {
+    const { data, error: selectError } = await sb()
+      .from('reachable_forum_posts')
+      .select('views')
+      .eq('id', postId)
+      .maybeSingle();
+    if (selectError) throw selectError;
+    if (!data) return true;
+
+    const { error: updateError } = await sb()
+      .from('reachable_forum_posts')
+      .update({ views: (typeof data.views === 'number' ? data.views : 0) + 1 })
+      .eq('id', postId);
+    if (updateError) throw updateError;
+    return true;
+  });
+  if (remote) return;
+
   const db = await ensureDb();
   const post = db.forum_posts.find((item) => item.id === postId);
   if (!post) return;
@@ -286,6 +403,16 @@ export async function incrementWorkspacePostViews(postId: string) {
 }
 
 export async function deleteWorkspacePost(postId: string, ownerKey?: string) {
+  const remote = await trySupabase(async () => {
+    const query = sb().from('reachable_forum_posts').delete().eq('id', postId);
+    const { error } = ownerKey && ownerKey !== 'anonymous'
+      ? await query.eq('owner_key', ownerKey)
+      : await query;
+    if (error) throw error;
+    return true;
+  });
+  if (remote !== null) return remote;
+
   const db = await ensureDb();
   const post = db.forum_posts.find((item) => item.id === postId);
   if (!post) return false;
@@ -300,6 +427,33 @@ export async function deleteWorkspacePost(postId: string, ownerKey?: string) {
 export async function createWorkspaceComment(
   input: Omit<ForumCommentRecord, 'id' | 'likes' | 'created_at'>,
 ) {
+  const remote = await trySupabase(async () => {
+    const { data, error } = await sb()
+      .from('reachable_forum_comments')
+      .insert({ ...input, likes: 0 })
+      .select('*')
+      .single();
+    if (error) throw error;
+
+    const { data: postData, error: postSelectError } = await sb()
+      .from('reachable_forum_posts')
+      .select('comments_count')
+      .eq('id', input.post_id)
+      .maybeSingle();
+    if (postSelectError) throw postSelectError;
+
+    if (postData) {
+      const { error: postUpdateError } = await sb()
+        .from('reachable_forum_posts')
+        .update({ comments_count: (typeof postData.comments_count === 'number' ? postData.comments_count : 0) + 1 })
+        .eq('id', input.post_id);
+      if (postUpdateError) throw postUpdateError;
+    }
+
+    return normalizeComment(data);
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   const comment: ForumCommentRecord = {
     id: `db-comment-${randomUUID()}`,
@@ -318,6 +472,38 @@ export async function createWorkspaceComment(
 }
 
 export async function deleteWorkspaceComment(commentId: string, ownerKey?: string) {
+  const remote = await trySupabase(async () => {
+    const { data: comment, error: selectError } = await sb()
+      .from('reachable_forum_comments')
+      .select('*')
+      .eq('id', commentId)
+      .maybeSingle();
+    if (selectError) throw selectError;
+    if (!comment) return false;
+    if (comment.owner_key && ownerKey && ownerKey !== 'anonymous' && comment.owner_key !== ownerKey) return false;
+
+    const { error: deleteError } = await sb().from('reachable_forum_comments').delete().eq('id', commentId);
+    if (deleteError) throw deleteError;
+
+    const { data: post, error: postSelectError } = await sb()
+      .from('reachable_forum_posts')
+      .select('comments_count')
+      .eq('id', comment.post_id)
+      .maybeSingle();
+    if (postSelectError) throw postSelectError;
+
+    if (post) {
+      const { error: postUpdateError } = await sb()
+        .from('reachable_forum_posts')
+        .update({ comments_count: Math.max(0, (typeof post.comments_count === 'number' ? post.comments_count : 0) - 1) })
+        .eq('id', comment.post_id);
+      if (postUpdateError) throw postUpdateError;
+    }
+
+    return true;
+  });
+  if (remote !== null) return remote;
+
   const db = await ensureDb();
   const comment = db.forum_comments.find((item) => item.id === commentId);
   if (!comment) return false;
@@ -333,6 +519,17 @@ export async function deleteWorkspaceComment(commentId: string, ownerKey?: strin
 }
 
 export async function listApplications(userKey: string) {
+  const remote = await trySupabase(async () => {
+    const { data, error } = await sb()
+      .from('reachable_applications')
+      .select('*')
+      .eq('user_key', userKey)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((item) => normalizeApplication(item)).filter((item): item is ApplicationRecord => Boolean(item));
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   return db.applications
     .filter((item) => item.user_key === userKey)
@@ -342,6 +539,40 @@ export async function listApplications(userKey: string) {
 export async function upsertApplication(
   input: Omit<ApplicationRecord, 'id' | 'created_at' | 'updated_at' | 'status_history'> & { id?: string },
 ) {
+  const remote = await trySupabase(async () => {
+    const existingQuery = input.id
+      ? sb().from('reachable_applications').select('*').eq('id', input.id)
+      : sb().from('reachable_applications').select('*').eq('user_key', input.user_key).eq('job_id', input.job_id);
+    const { data: existing, error: existingError } = await existingQuery.maybeSingle();
+    if (existingError) throw existingError;
+
+    const now = new Date().toISOString();
+    const previous = existing ? normalizeApplication(existing) : null;
+    const statusHistory = previous
+      ? previous.status === input.status
+        ? previous.status_history
+        : [{ status: input.status, changed_at: now, note: input.notes }, ...previous.status_history].slice(0, 20)
+      : [{ status: input.status, changed_at: now, note: input.notes }];
+
+    const payload = {
+      ...input,
+      status_history: statusHistory,
+      updated_at: now,
+      created_at: previous?.created_at ?? now,
+    };
+
+    const { data, error } = await sb()
+      .from('reachable_applications')
+      .upsert(payload, { onConflict: input.id ? 'id' : 'user_key,job_id' })
+      .select('*')
+      .single();
+    if (error) throw error;
+    const normalized = normalizeApplication(data);
+    if (!normalized) throw new Error('Invalid application returned from Supabase');
+    return normalized;
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   const now = new Date().toISOString();
   const existing = input.id ? db.applications.find((item) => item.id === input.id) : db.applications.find(
@@ -385,6 +616,29 @@ export async function upsertApplication(
 }
 
 export async function saveOnboarding(input: Omit<OnboardingRecord, 'id' | 'created_at' | 'updated_at'>) {
+  const remote = await trySupabase(async () => {
+    const now = new Date().toISOString();
+    const { data: existing, error: existingError } = await sb()
+      .from('reachable_onboarding')
+      .select('created_at')
+      .eq('user_key', input.user_key)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const { data, error } = await sb()
+      .from('reachable_onboarding')
+      .upsert({
+        ...input,
+        created_at: existing?.created_at ?? now,
+        updated_at: now,
+      }, { onConflict: 'user_key' })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as OnboardingRecord;
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   const now = new Date().toISOString();
   const existing = db.onboarding.find((item) => item.user_key === input.user_key);
@@ -408,6 +662,17 @@ export async function saveOnboarding(input: Omit<OnboardingRecord, 'id' | 'creat
 }
 
 export async function getOnboarding(userKey: string) {
+  const remote = await trySupabase(async () => {
+    const { data, error } = await sb()
+      .from('reachable_onboarding')
+      .select('*')
+      .eq('user_key', userKey)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as OnboardingRecord | null) ?? null;
+  });
+  if (remote !== null) return remote;
+
   const db = await ensureDb();
   return db.onboarding.find((item) => item.user_key === userKey) || null;
 }
@@ -415,6 +680,40 @@ export async function getOnboarding(userKey: string) {
 export async function upsertResumeWorkspace(
   input: Omit<ResumeWorkspaceRecord, 'id' | 'updated_at' | 'versions'> & { id?: string },
 ) {
+  const remote = await trySupabase(async () => {
+    const now = new Date().toISOString();
+    const { data: existing, error: existingError } = await sb()
+      .from('reachable_resume_workspaces')
+      .select('*')
+      .eq('user_key', input.user_key)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const previous = existing ? normalizeResumeWorkspace(existing) : null;
+    const versionEntry = {
+      id: `resume-version-${randomUUID()}`,
+      saved_at: now,
+      role_title: input.role_title,
+      summary: input.summary,
+      latex: input.latex,
+    };
+
+    const { data, error } = await sb()
+      .from('reachable_resume_workspaces')
+      .upsert({
+        ...input,
+        versions: [versionEntry, ...(previous?.versions || [])].slice(0, 12),
+        updated_at: now,
+      }, { onConflict: 'user_key' })
+      .select('*')
+      .single();
+    if (error) throw error;
+    const normalized = normalizeResumeWorkspace(data);
+    if (!normalized) throw new Error('Invalid resume workspace returned from Supabase');
+    return normalized;
+  });
+  if (remote) return remote;
+
   const db = await ensureDb();
   const now = new Date().toISOString();
   const existing = db.resume_workspaces.find((item) => item.user_key === input.user_key);
@@ -448,6 +747,17 @@ export async function upsertResumeWorkspace(
 }
 
 export async function getResumeWorkspace(userKey: string) {
+  const remote = await trySupabase(async () => {
+    const { data, error } = await sb()
+      .from('reachable_resume_workspaces')
+      .select('*')
+      .eq('user_key', userKey)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? normalizeResumeWorkspace(data) : null;
+  });
+  if (remote !== null) return remote;
+
   const db = await ensureDb();
   return db.resume_workspaces.find((item) => item.user_key === userKey) || null;
 }
