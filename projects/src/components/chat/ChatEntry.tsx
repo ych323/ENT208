@@ -151,7 +151,7 @@ export function ChatEntry({ locale = 'en' }: { locale?: 'en' | 'zh' }) {
   }
 
   if (showChat) {
-    return <Chat onBack={() => window.history.back()} />;
+    return <Chat locale={locale} onBack={() => window.history.back()} />;
   }
 
   return (

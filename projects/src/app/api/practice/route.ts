@@ -3,32 +3,48 @@ import { createBigModelChatCompletion } from '@/lib/bigmodel';
 
 type PracticeMode = 'interview' | 'written';
 
-function buildFallback(mode: PracticeMode, role: string, company: string, level: string, focus: string) {
+function clampQuestionCount(value: unknown) {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 6;
+  return Math.min(10, Math.max(4, Math.round(parsed)));
+}
+
+function buildFallback(
+  mode: PracticeMode,
+  role: string,
+  company: string,
+  level: string,
+  focus: string,
+  difficulty: string,
+  questionCount: number,
+  scenario: string,
+) {
   const roleLabel = role || 'general product and engineering roles';
   const companyLabel = company || 'a realistic hiring team';
   const focusLabel = focus || 'core problem solving, communication, and evidence from past work';
   const levelLabel = level || 'intern';
+  const difficultyLabel = difficulty || 'realistic';
+  const scenarioLabel = scenario || (mode === 'written' ? 'timed written assessment' : 'role-specific mock interview');
+  const questions = Array.from({ length: questionCount }, (_, index) => index + 1);
 
   if (mode === 'written') {
     return [
-      `Written test set for ${levelLabel} ${roleLabel} candidates targeting ${companyLabel}.`,
-      `Question 1. Explain how you would approach ${focusLabel} in a time-boxed written assessment and what assumptions you would state first.`,
-      `Question 2. You receive incomplete product or technical requirements. Write the structure you would use to clarify scope, constraints, and tradeoffs before implementation.`,
-      `Question 3. Describe a representative project or case and quantify the impact, quality bar, and limits of your contribution.`,
-      `Question 4. Analyze a failure scenario related to ${roleLabel} work. Identify root cause, what metric would move first, and how you would verify a fix.`,
-      `Question 5. Draft a short prioritization answer that shows judgment, communication, and decision logic under pressure.`,
-      `Review rubric. Accuracy, structure, signal density, tradeoff awareness, and role relevance.`,
+      `Written test set for ${levelLabel} ${roleLabel} candidates targeting ${companyLabel}. Difficulty: ${difficultyLabel}. Scenario: ${scenarioLabel}.`,
+      ...questions.map(
+        (item) =>
+          `Question ${item}. Solve a ${focusLabel} task that fits ${roleLabel}. State assumptions, outline the approach, identify one tradeoff, and define what a strong answer should prove.`,
+      ),
+      'Reviewer rubric. Score for correctness, structure, role relevance, tradeoff awareness, and clarity under time pressure.',
     ].join('\n\n');
   }
 
   return [
-    `Mock interview loop for a ${levelLabel} ${roleLabel} candidate targeting ${companyLabel}.`,
-    `Warm-up. Tell me about yourself in ninety seconds with emphasis on evidence that proves fit for ${roleLabel}.`,
-    `Question 1. Walk through a project that best demonstrates ${focusLabel}. I will probe for scope, ownership, and measurable outcome.`,
-    `Question 2. Tell me about a tradeoff or failure. I will look for judgment, reflection, and what changed in your process afterward.`,
-    `Question 3. Why this role, and why now? I will test whether your story is precise rather than generic.`,
-    `Question 4. What gap in your background would worry a hiring manager most, and how would you reduce that risk in the next four weeks?`,
-    `Scoring rubric. Clarity, evidence, structured thinking, role fit, and follow-through.`,
+    `Mock interview loop for a ${levelLabel} ${roleLabel} candidate targeting ${companyLabel}. Difficulty: ${difficultyLabel}. Scenario: ${scenarioLabel}.`,
+    ...questions.map(
+      (item) =>
+        `Question ${item}. Ask a role-specific question about ${focusLabel}. Follow up on scope, ownership, measurable outcome, tradeoffs, and what signal a strong answer should show.`,
+    ),
+    'Scoring rubric. Score for clarity, evidence, structured thinking, role fit, communication, and follow-through.',
   ].join('\n\n');
 }
 
@@ -40,21 +56,40 @@ export async function POST(request: NextRequest) {
     const company = typeof body.company === 'string' ? body.company.trim() : '';
     const level = typeof body.level === 'string' ? body.level.trim() : '';
     const focus = typeof body.focus === 'string' ? body.focus.trim() : '';
+    const difficulty = typeof body.difficulty === 'string' ? body.difficulty.trim() : 'Realistic';
+    const scenario = typeof body.scenario === 'string' ? body.scenario.trim() : '';
+    const questionCount = clampQuestionCount(body.questionCount);
+    const locale = body.locale === 'zh' ? 'zh' : 'en';
 
     let content = '';
 
     try {
+      const languageRule = locale === 'zh'
+        ? 'Reply in Chinese. Keep the structure compact and clear.'
+        : 'Reply in English. Keep the structure compact and clear.';
+      const modeLabel = mode === 'written' ? 'written test' : 'mock interview';
+
       content = await createBigModelChatCompletion([
         {
           role: 'system',
           content:
-            'You generate realistic mock interview and written-test materials for students and early-career candidates. Reply in plain English only. No markdown bullets, no headings, no tables. Write compact short paragraphs and number the questions inline with plain text if needed.',
+            `You generate realistic ${modeLabel} materials for students and early-career candidates. Use the same career-coach standards as the chat assistant. No markdown tables. Avoid generic questions. Each question must be tailored to the role, level, company style, focus area, and scenario. Include what the reviewer is testing and what a strong answer should contain. ${languageRule}`,
         },
         {
           role: 'user',
-          content: `Create a ${mode} practice set for role: ${role || 'general candidate'}; company target: ${company || 'general tech company'}; level: ${level || 'intern'}; focus: ${focus || 'core role skills'}.
+          content: `Create a custom ${modeLabel} practice set.
 
-Include 5 realistic questions and a short reviewer rubric. Make it sound like an actual hiring loop.`,
+Role: ${role || 'general candidate'}
+Company style: ${company || 'general tech company'}
+Level: ${level || 'intern'}
+Difficulty: ${difficulty}
+Focus area: ${focus || 'core role skills'}
+Scenario: ${scenario || 'realistic hiring assessment'}
+Question count: ${questionCount}
+
+For a mock interview, include opening question, role-specific technical or case questions, behavioral probes, follow-up probes, and a scoring rubric.
+For a written test, include practical tasks, time expectations, expected answer shape, evaluation criteria, and one stretch question.
+Make it feel like a real hiring loop, not a generic study list.`,
         },
       ]);
     } catch {
@@ -65,7 +100,7 @@ Include 5 realistic questions and a short reviewer rubric. Make it sound like an
       success: true,
       data: {
         mode,
-        content: content || buildFallback(mode, role, company, level, focus),
+        content: content || buildFallback(mode, role, company, level, focus, difficulty, questionCount, scenario),
       },
     });
   } catch (error) {

@@ -13,7 +13,7 @@ async function summarizeResume(rawText: string) {
     return '';
   }
 
-  const prompt = `请把下面这份简历内容整理成适合后续求职分析使用的中文摘要。重点提取：教育背景、项目经历、实习/工作经历、技术栈、结果数据、求职方向线索。不要输出 JSON，用清晰分段文本。\n\n简历内容：\n${rawText}`;
+  const prompt = `Rewrite the resume content below into a concise English summary for later career-fit analysis. Focus on education, projects, internships or work experience, technical stack, measurable outcomes, and possible target-role signals. Do not output JSON. Use clear short paragraphs.\n\nResume content:\n${rawText}`;
 
   return createBigModelChatCompletion([
     { role: 'system', content: '你是一个简历解析助手，负责把原始简历内容提炼成清晰、可读、可用于求职分析的摘要。' },

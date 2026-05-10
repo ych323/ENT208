@@ -84,10 +84,12 @@ const QUICK_QUESTIONS_ZH = [
 
 interface ChatProps {
   onBack?: () => void;
+  locale?: 'en' | 'zh';
 }
 
-export function Chat({ onBack }: ChatProps) {
+export function Chat({ onBack, locale }: ChatProps) {
   const { isEnglish } = useLanguage();
+  const shouldUseEnglish = locale ? locale === 'en' : isEnglish;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -97,36 +99,35 @@ export function Chat({ onBack }: ChatProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 根据语言选择快捷问题
-  const QUICK_QUESTIONS = isEnglish ? QUICK_QUESTIONS_EN : QUICK_QUESTIONS_ZH;
+  const QUICK_QUESTIONS = shouldUseEnglish ? QUICK_QUESTIONS_EN : QUICK_QUESTIONS_ZH;
 
   // 国际化文本
   const texts = {
-    welcomeTitle: isEnglish ? 'How can I help you?' : '有什么我能帮你的吗？',
-    welcomeDesc: isEnglish 
+    welcomeTitle: shouldUseEnglish ? 'How can I help you?' : '有什么我能帮你的吗？',
+    welcomeDesc: shouldUseEnglish 
       ? "I'm your career positioning assistant, helping you understand your abilities and find your direction"
       : '我是你的求职定位助手，帮你看清能力、找到方向',
-    userAvatar: isEnglish ? 'Me' : '我',
-    inputPlaceholder: isEnglish 
+    userAvatar: shouldUseEnglish ? 'Me' : '我',
+    inputPlaceholder: shouldUseEnglish 
       ? (isUploading ? 'Parsing resume...' : 'Tell me about your background, or just ask me...')
       : (isUploading ? '正在解析简历...' : '聊聊你的背景，或者直接问我...'),
-    inputHint: isEnglish 
+    inputHint: shouldUseEnglish 
       ? 'Press Enter to send · Shift + Enter for new line · Click 📎 to upload resume'
       : '按 Enter 发送 · Shift + Enter 换行 · 点击 📎 上传简历',
-    uploadTitle: isEnglish ? 'Upload Resume' : '上传简历',
-    sendTitle: isEnglish ? 'Send' : '发送',
-    requestFailed: isEnglish ? 'Request failed' : '请求失败',
-    errorPrefix: isEnglish ? 'Sorry, an error occurred: ' : '抱歉，出错了：',
-    networkError: isEnglish ? 'Something went wrong with the network' : '网络出了点问题',
-    noResponseError: isEnglish 
+    uploadTitle: shouldUseEnglish ? 'Upload Resume' : '上传简历',
+    sendTitle: shouldUseEnglish ? 'Send' : '发送',
+    requestFailed: shouldUseEnglish ? 'Request failed' : '请求失败',
+    errorPrefix: shouldUseEnglish ? 'Sorry, an error occurred: ' : '抱歉，出错了：',
+    networkError: shouldUseEnglish ? 'Something went wrong with the network' : '网络出了点问题',
+    noResponseError: shouldUseEnglish 
       ? 'Sorry, I encountered some issues. Please try again.'
       : '抱歉，我遇到了一些问题，请再试一次。',
-    uploadErrorTitle: isEnglish ? 'Resume upload failed 😔' : '抱歉，简历上传失败了 😔',
-    uploadErrorReasons: isEnglish 
+    uploadErrorTitle: shouldUseEnglish ? 'Resume upload failed 😔' : '抱歉，简历上传失败了 😔',
+    uploadErrorReasons: shouldUseEnglish 
       ? 'Possible reasons:\n- Unsupported file format (please upload PDF, Word, image, or text file)\n- File too large (max 10MB)\n- Network issue\n\nPlease try again, or you can tell me about your situation directly~'
       : '可能的原因：\n- 文件格式不支持（请上传 PDF、Word、图片或文本文件）\n- 文件太大（最大 10MB）\n- 网络问题\n\n请重新尝试，或者直接告诉我你的情况也可以～',
-    uploadedResume: isEnglish ? '📄 Uploaded resume: ' : '📄 上传简历：',
-    resumeAnalysisPrompt: isEnglish 
-      ? `I uploaded my resume, please help me analyze it:
+    uploadedResume: shouldUseEnglish ? '📄 Uploaded resume: ' : '📄 上传简历：',
+    resumeAnalysisPrompt: `I uploaded my resume, please help me analyze it in English:
 
 Resume content:
 {{content}}
@@ -134,16 +135,7 @@ Resume content:
 Based on my resume, please help me:
 1. Analyze my core strengths and advantages
 2. Evaluate what types of positions suit me
-3. Provide job-seeking advice`
-      : `我上传了我的简历，请帮我分析一下：
-
-简历内容：
-{{content}}
-
-请基于我的简历，帮我：
-1. 分析我的核心能力和优势
-2. 评估我适合什么类型的岗位
-3. 给出求职建议`,
+3. Provide job-seeking advice`,
   };
 
   // 是否已开始对话
@@ -288,7 +280,7 @@ Based on my resume, please help me:
 
       if (!response.ok || !data.success) {
         console.error('上传失败详情:', data);
-        throw new Error(data.message || data.error || (isEnglish ? 'Upload failed' : '上传失败'));
+        throw new Error(data.message || data.error || (shouldUseEnglish ? 'Upload failed' : '上传失败'));
       }
 
       const analysisPrompt = texts.resumeAnalysisPrompt.replace('{{content}}', data.content);

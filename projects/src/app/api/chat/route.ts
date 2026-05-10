@@ -4,7 +4,7 @@ import { searchRelevantJobs, type JobRecord } from '@/lib/jobs-data';
 
 const SYSTEM_PROMPT = `You are Reachable's career coach for students and early-career candidates.
 
-Default to English in every reply unless the user explicitly asks for Chinese or writes mainly in Chinese.
+Default to English in every reply. Reply in Chinese only when the user explicitly asks for Chinese.
 
 Output rules:
 - Do not use Markdown.
@@ -46,12 +46,7 @@ function streamText(text: string) {
 }
 
 function prefersChinese(text: string) {
-  const cjkChars = text.match(/[\u4e00-\u9fff]/g) ?? [];
-  if (cjkChars.length >= 6) {
-    return true;
-  }
-
-  return /(please answer in chinese|reply in chinese|用中文|中文回答|请用中文)/i.test(text);
+  return /(please answer in chinese|reply in chinese|answer in chinese|use chinese|用中文|中文回答|请用中文|用中文回答)/i.test(text);
 }
 
 function summarizeIntent(message: string, jobs: JobRecord[], useChinese: boolean) {
