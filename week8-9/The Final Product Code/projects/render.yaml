@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: reachable-career-studio
+    runtime: node
+    plan: starter
+    rootDir: projects
+    buildCommand: corepack enable && corepack prepare pnpm@9.0.0 --activate && pnpm install --frozen-lockfile && pnpm next build && pnpm tsup src/server.ts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
+    startCommand: node dist/server.js
+    disk:
+      name: reachable-data
+      mountPath: /opt/render/project/src/projects/.local-data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: PORT
+        value: 10000
+      - key: REACHABLE_DATA_DIR
+        value: /opt/render/project/src/projects/.local-data
+      - key: BIGMODEL_API_KEY
+        sync: false
+      - key: BIGMODEL_MODEL
+        value: glm-5.1
+      - key: BIGMODEL_BASE_URL
+        value: https://open.bigmodel.cn/api/paas/v4
+      - key: COZE_SUPABASE_URL
+        sync: false
+      - key: COZE_SUPABASE_ANON_KEY
+        sync: false
+      - key: COZE_SUPABASE_SERVICE_ROLE_KEY
+        sync: false
